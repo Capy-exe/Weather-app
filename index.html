@@ -3,33 +3,332 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Under Maintenance</title>
+  <title>State Weather Minimal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    /* Custom smooth fade transition for background and cards */
+    .weather-transition {
+      transition: background 0.8s ease, color 0.8s ease;
     }
   </style>
 </head>
-<body class="bg-neutral-950 text-neutral-400 min-h-screen flex items-center justify-center p-6 antialiased selection:bg-neutral-800 selection:text-neutral-200">
+<body id="body-bg" class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between p-6 md:p-10 weather-transition antialiased selection:bg-slate-800 selection:text-slate-200">
 
-  <main class="text-center">
-    <!-- Pulse Indicator -->
-    <div class="mb-6 flex justify-center items-center gap-2">
-      <span class="relative flex h-2 w-2">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-      </span>
+  <!-- Top Left Search Bar & Autocomplete -->
+  <header class="w-full relative z-50">
+    <div class="relative max-w-xs">
+      <div class="flex items-center bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-full px-4 py-2.5 shadow-lg shadow-black/20 focus-within:border-slate-600 transition">
+        <svg class="w-4 h-4 text-slate-400 mr-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <input 
+          type="text" 
+          id="state-search-input" 
+          placeholder="Search state (e.g. California)..." 
+          autocomplete="off"
+          class="bg-transparent text-sm placeholder-slate-500 text-slate-200 focus:outline-none w-full"
+        >
+        <!-- Loading spinner in input -->
+        <div id="search-spinner" class="hidden ml-2">
+          <svg class="animate-spin h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Suggestions Dropdown List -->
+      <div id="suggestions-box" class="absolute left-0 right-0 mt-2 bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl overflow-hidden hidden z-50 max-h-60 overflow-y-auto divide-y divide-slate-800/50">
+        <!-- Dynamically populated suggestions -->
+      </div>
     </div>
+  </header>
 
-    <!-- Main Maintenance Message -->
-    <p class="text-sm md:text-base font-light tracking-widest text-neutral-300 uppercase">
-      Shaurya is p diddy.
-    </p>
+  <!-- Main Center Weather Display -->
+  <main class="my-auto py-12 flex flex-col items-center text-center">
+    <!-- Initial / Loading State -->
+    <div id="weather-display" class="w-full max-w-lg transition-all duration-500">
+      <div id="state-placeholder" class="py-16 text-slate-500 font-light text-sm tracking-widest uppercase">
+        Search for a state above to view weather & time
+      </div>
+
+      <div id="weather-content" class="hidden space-y-8">
+        <!-- Location Header -->
+        <div>
+          <h1 id="location-name" class="text-2xl md:text-3xl font-medium tracking-tight text-slate-100"></h1>
+          <p id="location-country" class="text-xs uppercase tracking-widest text-slate-400 mt-1"></p>
+        </div>
+
+        <!-- Temperature & Condition Card -->
+        <div class="bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+          <div class="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12">
+            <div class="text-6xl md:text-7xl font-light tracking-tighter text-slate-100">
+              <span id="temp-value">--</span><span class="text-4xl text-slate-400 ml-1">°C</span>
+            </div>
+            <div class="h-12 w-px bg-slate-800 hidden md:block"></div>
+            <div class="text-center md:text-left">
+              <div id="weather-condition" class="text-lg font-medium text-slate-200 capitalize">--</div>
+              <div id="temp-range" class="text-xs text-slate-400 mt-1 font-light">High: --° | Low: --°</div>
+            </div>
+          </div>
+
+          <!-- Extra Metrics Row -->
+          <div class="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-slate-800/60 text-xs text-slate-400">
+            <div class="flex items-center justify-center gap-2">
+              <span>Humidity:</span>
+              <span id="humidity-value" class="font-medium text-slate-200">--%</span>
+            </div>
+            <div class="flex items-center justify-center gap-2">
+              <span>Wind Speed:</span>
+              <span id="wind-value" class="font-medium text-slate-200">-- km/h</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Local Time Badge -->
+        <div class="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-slate-900/60 border border-slate-800/80 backdrop-blur-md text-sm font-medium tracking-wide text-slate-300">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span id="local-time">--:--:-- --</span>
+        </div>
+      </div>
+    </div>
   </main>
 
+  <!-- Non-intrusive Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 border border-slate-800 text-slate-200 px-4 py-3 rounded-xl shadow-2xl text-xs z-50 flex items-center gap-3">
+    <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+    </svg>
+    <span id="toast-message">Please enter a valid state or region name.</span>
+  </div>
+
+  <!-- Minimal Footer -->
+  <footer class="text-center text-xs text-slate-600 font-light tracking-wide">
+    Minimal Weather • State-level Geocoding
+  </footer>
+
+  <script>
+    // State management and timer variable
+    let timeInterval = null;
+    let debounceTimer = null;
+
+    const searchInput = document.getElementById('state-search-input');
+    const searchSpinner = document.getElementById('search-spinner');
+    const suggestionsBox = document.getElementById('suggestions-box');
+    const statePlaceholder = document.getElementById('state-placeholder');
+    const weatherContent = document.getElementById('weather-content');
+    
+    // UI Elements
+    const locationNameEl = document.getElementById('location-name');
+    const locationCountryEl = document.getElementById('location-country');
+    const tempValueEl = document.getElementById('temp-value');
+    const weatherConditionEl = document.getElementById('weather-condition');
+    const tempRangeEl = document.getElementById('temp-range');
+    const humidityValueEl = document.getElementById('humidity-value');
+    const windValueEl = document.getElementById('wind-value');
+    const localTimeEl = document.getElementById('local-time');
+    const bodyBg = document.getElementById('body-bg');
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toast-message');
+
+    // Show custom toast message
+    function showToast(msg) {
+      toastMessage.textContent = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3500);
+    }
+
+    // Input event listener for search autocomplete
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      clearTimeout(debounceTimer);
+
+      if (query.length < 2) {
+        suggestionsBox.classList.add('hidden');
+        searchSpinner.classList.add('hidden');
+        return;
+      }
+
+      searchSpinner.classList.remove('hidden');
+      debounceTimer = setTimeout(() => {
+        fetchStateSuggestions(query);
+      }, 400);
+    });
+
+    // Fetch state/region suggestions using Nominatim OpenStreetMap API with administrative filters
+    async function fetchStateSuggestions(query) {
+      try {
+        // Nominatim query specifying state/province level administrative boundary
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&featureType=state&addressdetails=1&limit=5`;
+        const response = await fetch(url, {
+          headers: {
+            'Accept-Language': 'en'
+          }
+        });
+        const data = await response.json();
+        
+        searchSpinner.classList.add('hidden');
+        renderSuggestions(data);
+      } catch (err) {
+        searchSpinner.classList.add('hidden');
+        console.error('Error fetching suggestions:', err);
+      }
+    }
+
+    // Render suggestions dropdown
+    function renderSuggestions(places) {
+      suggestionsBox.innerHTML = '';
+      if (!places || places.length === 0) {
+        suggestionsBox.classList.add('hidden');
+        return;
+      }
+
+      places.forEach(place => {
+        // Extract clean state and country name
+        const address = place.address || {};
+        const stateName = address.state || address.province || address.region || place.display_name.split(',')[0];
+        const countryName = address.country || '';
+
+        const item = document.createElement('div');
+        item.className = 'px-4 py-3 text-sm text-slate-300 hover:bg-slate-800/60 cursor-pointer transition flex items-center justify-between';
+        item.innerHTML = `
+          <span class="font-medium text-slate-200">${stateName}</span>
+          <span class="text-xs text-slate-500 uppercase">${countryName}</span>
+        `;
+
+        item.addEventListener('click', () => {
+          searchInput.value = stateName;
+          suggestionsBox.classList.add('hidden');
+          loadWeatherData(place.lat, place.lon, stateName, countryName);
+        });
+
+        suggestionsBox.appendChild(item);
+      });
+
+      suggestionsBox.classList.remove('hidden');
+    }
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+        suggestionsBox.classList.add('hidden');
+      }
+    });
+
+    // Fetch weather data from Open-Meteo API
+    async function loadWeatherData(lat, lon, stateName, countryName) {
+      try {
+        statePlaceholder.textContent = 'Loading weather...';
+        statePlaceholder.classList.remove('hidden');
+        weatherContent.classList.add('hidden');
+
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+        const res = await fetch(weatherUrl);
+        const data = await res.json();
+
+        // Save last searched state to localStorage
+        const stateInfo = { lat, lon, stateName, countryName };
+        localStorage.setItem('lastSearchedState', JSON.stringify(stateInfo));
+
+        displayWeather(data, stateName, countryName);
+      } catch (err) {
+        console.error('Error fetching weather:', err);
+        showToast('Failed to retrieve weather information.');
+        statePlaceholder.textContent = 'Search for a state above to view weather & time';
+      }
+    }
+
+    // Map WMO Weather codes to human readable text and background themes
+    function getWeatherDetails(code) {
+      const weatherMap = {
+        0: { text: 'Clear sky', theme: 'from-slate-950 via-sky-950 to-slate-950' },
+        1: { text: 'Mainly clear', theme: 'from-slate-950 via-sky-950/60 to-slate-950' },
+        2: { text: 'Partly cloudy', theme: 'from-slate-950 via-slate-900 to-slate-950' },
+        3: { text: 'Overcast', theme: 'from-slate-950 via-zinc-900 to-slate-950' },
+        45: { text: 'Foggy', theme: 'from-slate-950 via-zinc-900 to-slate-950' },
+        51: { text: 'Light drizzle', theme: 'from-slate-950 via-blue-950/50 to-slate-950' },
+        61: { text: 'Rain showers', theme: 'from-slate-950 via-indigo-950 to-slate-950' },
+        71: { text: 'Snow fall', theme: 'from-slate-950 via-cyan-950 to-slate-950' },
+        95: { text: 'Thunderstorm', theme: 'from-slate-950 via-purple-950 to-slate-950' }
+      };
+      return weatherMap[code] || { text: 'Fair conditions', theme: 'from-slate-950 via-slate-900 to-slate-950' };
+    }
+
+    // Display weather data on DOM
+    function displayWeather(data, stateName, countryName) {
+      statePlaceholder.classList.add('hidden');
+      weatherContent.classList.remove('hidden');
+
+      locationNameEl.textContent = stateName;
+      locationCountryEl.textContent = countryName;
+
+      const current = data.current;
+      const daily = data.daily;
+
+      tempValueEl.textContent = Math.round(current.temperature_2m);
+      humidityValueEl.textContent = `${current.relative_humidity_2m}%`;
+      windValueEl.textContent = `${current.wind_speed_10m} km/h`;
+
+      const weatherInfo = getWeatherDetails(current.weather_code);
+      weatherConditionEl.textContent = weatherInfo.text;
+
+      if (daily && daily.temperature_2m_max && daily.temperature_2m_min) {
+        tempRangeEl.textContent = `High: ${Math.round(daily.temperature_2m_max[0])}° | Low: ${Math.round(daily.temperature_2m_min[0])}°`;
+      }
+
+      // Start live local clock based on timezone offset provided by Open-Meteo
+      startClock(data.timezone);
+    }
+
+    // Live clock updater with AM/PM format
+    function startClock(timezone) {
+      if (timeInterval) clearInterval(timeInterval);
+
+      function updateTimer() {
+        try {
+          const now = new Date();
+          const options = {
+            timeZone: timezone,
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+          };
+          const formatter = new Intl.DateTimeFormat([], options);
+          localTimeEl.textContent = formatter.format(now);
+        } catch (e) {
+          localTimeEl.textContent = new Date().toLocaleTimeString();
+        }
+      }
+
+      updateTimer();
+      timeInterval = setInterval(updateTimer, 1000);
+    }
+
+    // On page load, check localStorage for last searched state
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedState = localStorage.getItem('lastSearchedState');
+      if (savedState) {
+        try {
+          const parsed = JSON.parse(savedState);
+          searchInput.value = parsed.stateName;
+          loadWeatherData(parsed.lat, parsed.lon, parsed.stateName, parsed.countryName);
+        } catch (e) {
+          console.error('Error parsing saved state', e);
+        }
+      }
+    });
+  </script>
 </body>
 </html>
