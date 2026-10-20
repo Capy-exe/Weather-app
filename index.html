@@ -1,49 +1,233 @@
-// Live search dropdown supporting major cities, states, and countries
-searchInput.addEventListener('input', (e) => {
-    clearTimeout(searchTimeout);
-    const query = e.target.value.trim();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Weather Dashboard</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-    if (query.length < 2) {
-        dropdown.style.display = 'none';
-        return;
-    }
+        /* Top-Left Location Selector */
+        .top-left-menu {
+            position: absolute;
+            top: 1.5rem;
+            left: 1.5rem;
+            width: 280px;
+            z-index: 10;
+        }
+        .selector-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin-bottom: 0.3rem;
+            font-weight: 600;
+        }
+        .selector-input {
+            width: 100%;
+            padding: 0.65rem 0.85rem;
+            border-radius: 0.5rem;
+            border: 1px solid #334155;
+            background: #1e293b;
+            color: #f8fafc;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+        }
+        .selector-input:focus {
+            outline: none;
+            border-color: #38bdf8;
+        }
+        .dropdown-results {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            margin-top: 0.25rem;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+        .dropdown-item {
+            padding: 0.65rem 0.85rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #334155;
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .dropdown-item:hover {
+            background: #334155;
+            color: #38bdf8;
+        }
 
-    searchTimeout = setTimeout(async () => {
-        try {
-            // Fetch top 10 results sorted or filtered naturally
-            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=10`);
-            const data = await res.json();
+        /* Main Container */
+        .container {
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+            margin-top: 5rem;
+        }
+        h1 {
+            font-size: 1.5rem;
+            color: #38bdf8;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .card {
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            border: 1px solid #334155;
+            margin-bottom: 2rem;
+        }
+        .temp-value {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin: 0.5rem 0;
+            color: #38bdf8;
+        }
+        .weather-condition {
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+            text-transform: capitalize;
+        }
+        .local-time {
+            font-size: 0.95rem;
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.1);
+            padding: 0.4rem 0.8rem;
+            border-radius: 2rem;
+            display: inline-block;
+            margin-top: 0.75rem;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+        #status {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-top: 1rem;
+        }
 
-            dropdown.innerHTML = '';
-            if (!data.results || data.results.length === 0) {
+        /* Bookmarks */
+        .bookmarks-section {
+            text-align: left;
+        }
+        .bookmarks-section h2 {
+            font-size: 1rem;
+            color: #94a3b8;
+            margin-bottom: 0.75rem;
+        }
+        .bookmark-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .bookmark-tag {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 0.4rem 0.75rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        .bookmark-tag:hover {
+            border-color: #38bdf8;
+        }
+        .remove-btn {
+            color: #f43f5e;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .action-btns {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: #38bdf8;
+            color: #0f172a;
+        }
+        .btn-primary:hover {
+            background: #0ea5e9;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top-Left Search / Dropdown Menu -->
+    <div class="top-left-menu">
+        <div class="selector-label">Search State / Country</div>
+        <input type="text" id="location-search" class="selector-input" placeholder="Type city, state, country...">
+        <div id="dropdown-results" class="dropdown-results"></div>
+    </div>
+
+    <div class="container">
+        <h1>Weather Dashboard</h1>
+        
+        <div class="card" id="weather-card">
+            <div id="city-name" style="font-size: 1.3rem; color: #f8fafc; font-weight: 600;">Select a location</div>
+            <div id="condition" class="weather-condition">--</div>
+            <div id="temp" class="temp-value">--°C</div>
+            <div id="time-display"></div>
+            <div id="status">Use the top-left menu to search locations</div>
+            
+            <div class="action-btns">
+                <button id="bookmark-btn" class="btn btn-primary" style="display: none;">⭐ Bookmark</button>
+            </div>
+        </div>
+
+        <div class="bookmarks-section">
+            <h2>Saved Bookmarks</h2>
+            <div id="bookmark-list" class="bookmark-list"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentCityData = null;
+        let searchTimeout = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            displayBookmarks();
+            fetchWeatherData(28.6139, 77.2090, "Delhi, India", "Asia/Kolkata");
+        });
+
+        const searchInput = document.getElementById('location-search');
+        const dropdown = document.getElementById('dropdown-results');
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+
+            if (query.length < 2) {
                 dropdown.style.display = 'none';
                 return;
             }
 
-            // Sort by population so major cities and primary states appear at the top
-            const sortedResults = data.results.sort((a, b) => (b.population || 0) - (a.population || 0));
-
-            sortedResults.forEach(loc => {
-                const item = document.createElement('div');
-                item.className = 'dropdown-item';
-                
-                // Format display as: "City/State, Region, Country"
-                const region = loc.admin1 ? `, ${loc.admin1}` : '';
-                const country = loc.country ? `, ${loc.country}` : '';
-                const displayName = `${loc.name}${region}${country}`;
-
-                item.textContent = displayName;
-                item.addEventListener('click', () => {
-                    searchInput.value = displayName;
-                    dropdown.style.display = 'none';
-                    fetchWeatherData(loc.latitude, loc.longitude, displayName, loc.timezone);
-                });
-                dropdown.appendChild(item);
-            });
-
-            dropdown.style.display = 'block';
-        } catch (err) {
-            console.error(err);
-        }
-    }, 300);
-});
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch(`
