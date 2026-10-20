@@ -1,4 +1,4 @@
-// Live search dropdown limited strictly to States, Union Territories, and Countries
+// Live search dropdown supporting major cities, states, and countries
 searchInput.addEventListener('input', (e) => {
     clearTimeout(searchTimeout);
     const query = e.target.value.trim();
@@ -10,8 +10,8 @@ searchInput.addEventListener('input', (e) => {
 
     searchTimeout = setTimeout(async () => {
         try {
-            // Fetch top 15 results to scan for administrative areas
-            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=15`);
+            // Fetch top 10 results sorted or filtered naturally
+            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=10`);
             const data = await res.json();
 
             dropdown.innerHTML = '';
@@ -20,24 +20,17 @@ searchInput.addEventListener('input', (e) => {
                 return;
             }
 
-            // Filter for primary administrative divisions (States, UTs, Regions, Countries)
-            // Feature codes like ADM1 (State/Province), ADM2, PCL (Country), etc.
-            const filteredResults = data.results.filter(loc => {
-                const code = loc.feature_code || '';
-                // Keep major administrative regions (ADM1, ADM2) or country level (PCLI, PCL)
-                return code.startsWith('ADM') || code.startsWith('PCL') || loc.name.toLowerCase() === query.toLowerCase();
-            });
+            // Sort by population so major cities and primary states appear at the top
+            const sortedResults = data.results.sort((a, b) => (b.population || 0) - (a.population || 0));
 
-            // If no strict admin match found, fallback to top population results
-            const displayList = filteredResults.length > 0 ? filteredResults : data.results.slice(0, 5);
-
-            displayList.forEach(loc => {
+            sortedResults.forEach(loc => {
                 const item = document.createElement('div');
                 item.className = 'dropdown-item';
                 
-                // Format display as: "State/Region, Country"
+                // Format display as: "City/State, Region, Country"
+                const region = loc.admin1 ? `, ${loc.admin1}` : '';
                 const country = loc.country ? `, ${loc.country}` : '';
-                const displayName = `${loc.name}${country}`;
+                const displayName = `${loc.name}${region}${country}`;
 
                 item.textContent = displayName;
                 item.addEventListener('click', () => {
